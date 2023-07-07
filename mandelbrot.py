@@ -9,7 +9,7 @@ import matplotlib.pyplot as pl
 pl.ioff()
 import os
 
-logging.basicConfig(filename='log.log', level=logging.DEBUG, format='%(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='log.log', level=logging.DEBUG, format='%(asctime)s  -  %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 logging.getLogger('matplotlib.font_manager').disabled = True
 
 def mandelbrot(x, y, threshold):
@@ -20,6 +20,8 @@ def mandelbrot(x, y, threshold):
     :param float x: the x component of the initial complex number
     :param float y: the y component of the initial complex number
     :param int threshold: the number of iterations to considered it converged
+
+    Returns: thresh (usual value shown, ie num of iterations), z (final complex value reached)
     """
 
     # initial conditions
@@ -29,9 +31,9 @@ def mandelbrot(x, y, threshold):
     for i in range(threshold):
         z = z**2 + c
         if abs(z) > 4.0:  # it diverged
-            return i
-        
-    return threshold - 1  # it didn't diverge
+            return i, z
+
+    return threshold - 1, z  # it didn't diverge
 
 def generate_img(center, wh, thresh, npix=200, arr=None):
     re0, im0 = center
@@ -46,19 +48,24 @@ def generate_img(center, wh, thresh, npix=200, arr=None):
     for i in range(len(im)):
         for j in range(len(re)):
             R, I = re[j], im[i]
-            arr[i, j] = mandelbrot(R, I, thresh)
+            N, Z = mandelbrot(R, I, thresh)
+            # https://linas.org/art-gallery/escape/smooth.html
+            with np.errstate(invalid='ignore'):
+                M = np.nan_to_num(N + 1 - np.log(np.log(abs(Z)))/np.log(2))
+            arr[i, j] = M
+        
     return arr, (im, re)
 
 # Params
-thresh = 800
+thresh = 500
 npix = 800
-zooms = np.logspace(0.3, -15, 150)
+zooms = np.logspace(0.3, -15, 200)
 zooms = np.array([zooms, np.arange(len(zooms))]).T
 #center=(-1.2963247639177446, 0.44182080996569695)
 #center = (-0.46475777464800705, -0.5450620084753436)
 center = (-1.2500579833374386, 0.00549374971639973)
-save_dir = f'imgs/{center[0]}-{center[1]}_{zooms[0,0]}-{zooms[-1,0]}_{thresh}_{npix}'
-os.makedirs(save_dir)
+save_dir = f'imgs/mand_{center[0]}-{center[1]}_{zooms[0,0]}-{zooms[-1,0]}_{thresh}_{npix}'
+os.makedirs(save_dir, exist_ok=True)
 n_procs = 8
 
 def display_images(zooms, center, thresh, npix, cmap=pl.cm.magma_r):
@@ -73,7 +80,8 @@ def display_images(zooms, center, thresh, npix, cmap=pl.cm.magma_r):
     fig = pl.figure(figsize=(6,6))
     ax = fig.add_axes([0, 0, 1, 1])
     img = ax.imshow(im[::-1], cmap=cmap,
-                    extent=(x0, x1, y0, y1))
+                    extent=(x0, x1, y0, y1),
+                    interpolation='bicubic')
 
     for zoom, zoom_id in zooms:
         zoom_id = int(zoom_id)
