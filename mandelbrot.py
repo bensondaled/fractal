@@ -68,7 +68,7 @@ save_dir = f'imgs/mand_{center[0]}-{center[1]}_{zooms[0,0]}-{zooms[-1,0]}_{thres
 os.makedirs(save_dir, exist_ok=True)
 n_procs = 8
 
-def display_images(zooms, center, thresh, npix, cmap=pl.cm.magma_r):
+def display_images(zooms, center, thresh, npix, cmap=pl.cm.magma):
     # create a baseline image object
     im, coords = generate_img(center=center,
                           wh=zooms[0,0], #w/h in complex plane coords
@@ -93,7 +93,7 @@ def display_images(zooms, center, thresh, npix, cmap=pl.cm.magma_r):
                               npix=npix)
         img.set_data(im[::-1])
         img.set_clim(im.min(), im.max())
-        fig.savefig(os.path.join(save_dir, f'{zoom_id:05}.png'))
+        fig.savefig(os.path.join(save_dir, f'{zoom_id:05}.png'), dpi=200)
 
 zlists = np.array_split(zooms, n_procs, axis=0)
 procs = []
